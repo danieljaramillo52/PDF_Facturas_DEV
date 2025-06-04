@@ -1,0 +1,59 @@
+# Configuración proyecto Nodriza
+# Se usa tanto el número del año ejm: 2024 como el número del mes ejm: 11
+an_act : 2025
+mes_act : 2
+
+config_paths:
+  path_facturas: Insumos/facturas_pdf/
+  path_insumos_adic: "Insumos/insumos_adicionales/"
+  path_plant_encabezado: "Insumos/insumos_adicionales/catalogo_dev_plantilla_encabezado.xlsx"
+
+Insumos:
+  maestra_precios:
+    nom_base : Maestra_precios.xlsx
+    nom_hoja : Sheet1
+    cols : ["COD_MATERIAL", "DESCR_MATERIAL", "EAN_UN"]
+  maestra_megatiendas:
+    nom_base : data Megatiendas.xlsx
+    nom_hoja : Hoja1
+    cols: [Cod_Cliente, Nom_Cliente, Ciudad, PDV]
+
+config_claves_pdf:
+  productos: 
+   - "bodega"
+   - "um"
+   - "cantidad"
+   - "precio_unitario"
+   - "iva"
+   - "descuento"
+   - "valor_total"
+  mapeo_cabecera:
+    "Proveedor:": "proveedor"
+    "Contacto:": "contacto"
+    "Dirección:": "direccion"
+    "Ciudad:": "ciudad"
+    "Teléfono:": "telefono"
+    "Comprador:": "comprador"
+    "Moneda:": "moneda"
+    "Número:": "numero"
+  patrones_cabecera:
+    proveedor: "Proveedor:\\s*(.*?)\\s*Contacto:"
+    contacto: "Contacto:\\s*(.*?)\\s*Dirección:"
+    direccion: "Dirección:\\s*(.*?)\\s*Ciudad:"
+    ciudad: "Ciudad:\\s*(.*?)\\s*Teléfono:"
+    telefono: "Teléfono:\\s*(\\d+)"
+    fax: "Fax:\\s*(\\d+)?"
+    NIT: "NIT\\s*:\\s*(\\d{9,10}-\\d)"
+    Número : "Número:\\s+(\\d{3}-[A-Z]{3}-\\d{8})"
+  motivos_devolucion: 
+    - "D01-AvaladCalid/Rec.Mas."
+    - "D02-Avería en el cliente"
+    - "D03-Baja Rotación"
+    - "D06-Perdida de vacio"
+    - "D11-Producto vencido"
+    - "D07-Producto Contaminado"
+    - "D09-Producto derretido"
+    - "D71-Baja Rotación- Buena"
+  cols_finales:
+    ["COD_MATERIAL", "DESCR_MATERIAL", "um", "cantidad"]
+      
