@@ -99,7 +99,7 @@ def exportar_a_excel(
     df: pd.DataFrame,
     ruta_guardado: str,
     nom_base: str,
-    nom_hoja: str,
+    nom_hoja: str = None,
     index: bool = False,
 ) -> None:
     """

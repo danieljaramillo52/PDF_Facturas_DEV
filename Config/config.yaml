@@ -1,7 +1,4 @@
-# Configuración proyecto Nodriza
-# Se usa tanto el número del año ejm: 2024 como el número del mes ejm: 11
-#an_act : 2025
-#mes_act : 2
+# Configuración proyecto Facturas pdf
 
 config_paths:
   path_facturas: Insumos/facturas_pdf/
@@ -57,3 +54,7 @@ config_claves_pdf:
   cols_finales:
     ["COD_MATERIAL", "DESCR_MATERIAL", "um", "cantidad"]
       
+paths_resultados:
+  plantillas: "Plantilla_Resultado/devolución_{num_oficina}_{nomb}_{obs_fact}.xlsx"
+  cods_faltantes:  "Plantilla_Resultado/Codigos_EAN_Faltantes.txt"  
+  mat_duplicados : "Plantilla_Resultado/materiales_duplicados.xlsx"

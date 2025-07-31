@@ -312,3 +312,41 @@ def merge_con_fallback(
         df_merge_1.update(df_merge_2)
 
     return df_merge_1
+
+def filtrar_por_valores(
+    df: pd.DataFrame, columna: str, valores: list[str | int], incluir: bool = True
+) -> pd.DataFrame | None:
+    """
+    Filtra un DataFrame incluyendo o excluyendo filas según los valores en una columna.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame a filtrar.
+    columna : str
+        Nombre de la columna sobre la cual aplicar el filtro.
+    valores : list of str or int
+        Lista de valores a incluir o excluir.
+    incluir : bool, default=True
+        Si True, incluye las filas con los valores indicados. Si False, las excluye.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame filtrado o None si ocurre un error.
+    """
+    try:
+        if isinstance(valores, (str, int)):
+            valores = [valores]
+
+        if incluir:
+            df_filtrado = df[df[columna].isin(valores)]
+        else:
+            df_filtrado = df[~df[columna].isin(valores)]
+
+        return df_filtrado
+
+    except Exception as e:
+        logger.critical(f"Error al filtrar por valores en la columna '{columna}': {e}")
+        return None
+    
