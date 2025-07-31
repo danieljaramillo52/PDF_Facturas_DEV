@@ -264,3 +264,51 @@ def Crear_diccionario_desde_dataframe(
             # Registrar un mensaje crítico si hay un error
             logger.critical(f"Error: {ve}")
             raise ve
+
+
+
+def merge_con_fallback(
+    df_left: pd.DataFrame,
+    df_right: pd.DataFrame,
+    primera_clave: str = "EAN_UN",
+    segunda_clave: str = "EAN_PQ",
+    columna_objetivo: str = "COD_MATERIAL"
+) -> pd.DataFrame:
+    """
+    Realiza un merge por la primera clave y luego intenta completar los valores faltantes
+    en `columna_objetivo` con un segundo merge por una clave alternativa.
+
+    Args:
+        df_left (pd.DataFrame): DataFrame principal (izquierdo)
+        df_right (pd.DataFrame): DataFrame de referencia (derecho)
+        primera_clave (str): Columna para el primer merge
+        segunda_clave (str): Columna para el segundo merge (fallback)
+        columna_objetivo (str): Columna que debe rellenarse si está vacía
+
+    Returns:
+        pd.DataFrame: DataFrame combinado sin duplicar columnas
+    """
+
+    # Primer merge por primera_clave
+    df_merge_1 = pd.merge(df_left, df_right, how="left", on=primera_clave)
+
+    df_merge_1[segunda_clave] = df_merge_1[segunda_clave].fillna(df_merge_1[primera_clave])
+    # Detectar filas que no cruzaron (donde columna_objetivo es NaN)
+    df_incompletos = df_merge_1[df_merge_1[columna_objetivo].isna()]
+
+    if not df_incompletos.empty:
+        
+        # Segundo merge por segunda_clave, con solo columnas necesarias
+        cols_izquierda = [segunda_clave] + df_left.columns.tolist()[1:]
+        df_merge_2 = pd.merge(
+            df_incompletos[cols_izquierda],
+            df_right,
+            how="left",
+            on=segunda_clave
+        )
+
+        # Combinar: merge_1 tiene los completos y los incompletos originales,
+        # merge_2 solo tiene los incompletos pero con posibles datos ahora
+        df_merge_1.update(df_merge_2)
+
+    return df_merge_1

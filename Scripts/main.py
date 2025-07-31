@@ -1,14 +1,15 @@
 # Importaciones de librerías estándar y externas.
 import config_path_routes
-import nutresa_pdf_parser as npp
+import Scripts.nutresa_pdf_parser as npp
 from pandas import DataFrame, concat
 from typing import Dict
 from collections import defaultdict
 
 # Importaciones de módulos específicos del proyecto.
-import general_functions as gf
-import transformation_functions as tf
-from config_loader import ConfigWrapper, config_dict
+import Utils.general_functions as gf
+import Utils.transformation_functions as tf
+from Config.config_loader import ConfigWrapper, config_dict
+
 
 
 class Run:
@@ -34,11 +35,12 @@ class Run:
         COD_MATERIAL = "COD_MATERIAL"
         CONCATENADA = "concatenado"
         EAN_UN = "EAN_UN"
+        EAN_PQ = "EAN_PQ"
         PDV = "PDV"
 
         list_path_pdfs = gf.listar_elementos_rutas_completas(self.path_pdfs)
 
-        dict_pdfs_cabecera = defaultdict(list)
+        list_pdfs_cabecera = []
         for cada_pdf in list_path_pdfs:
             procesor_pdf = npp.ProcesadorPDFNutresa(
                 pdf_path=cada_pdf, dict_claves=self.dict_claves
@@ -49,9 +51,9 @@ class Run:
 
             observación = dict_pdf_obser_prod["info_pdf"]["observaciones"]
 
-            dict_pdfs_cabecera[(num_cabecera, observación)].append(
-                dict_pdf_obser_prod["df_productos"]
-            )
+            tuple_informacion = (num_cabecera, observación,dict_pdf_obser_prod["df_productos"])
+
+            list_pdfs_cabecera.append(tuple_informacion)
 
         # Procesar maestra de precios
         lector_insumos_excel = gf.ExcelReader(path=self.inusmos_adic)
@@ -64,21 +66,24 @@ class Run:
             nom_hoja=self.insumos.maestra_megatiendas.nom_hoja,
         )
 
-        # Filtrar por cadenas regionales.
-        # df_prec_fil_por_cadnea = df_precios[
-        #    df_precios["DESCR_GCLT"] == "Cadenas Regionales"
-        # ]
-        # df_precios =
-        
         df_prec_select = tf.seleccionar_columnas_pd(
             df=df_precios,
             cols_elegidas=self.insumos.maestra_precios.cols,
         )
-
+        df_prec_select.drop_duplicates()
         df_prec_select_sin_dup = df_prec_select.drop_duplicates(
             subset=EAN_UN, inplace=False
         )
-
+        df_prec_select_sin_dup = df_prec_select.drop_duplicates(inplace=False)
+        
+        df_prec_sin_redundantes = df_prec_select_sin_dup[~df_prec_select_sin_dup[EAN_UN].isin(["-"])]
+        
+        df_prec_sin_red_sort = df_prec_sin_redundantes.sort_values(by="EAN_UN", inplace=False)
+        
+        df_duplicados_ean = df_prec_sin_red_sort[df_prec_sin_red_sort.duplicated(subset="EAN_UN", keep=False)]
+        
+        df_duplicados_ean.to_excel("Plantilla_Resultado/materiales_duplicados.xlsx", index=False)
+        
         # Cargar la plantilla base una sola vez
         plantilla_base = tf.ExcelPlantilla.cargar_desde_archivo(self.path_plant_ecazdo)
 
@@ -95,30 +100,29 @@ class Run:
         # Procesar por cada key
         # Claves faltantes insumo.
         list_faltantes_df_precios_total = []
-        for cada_tuple_key, list_dfs in dict_pdfs_cabecera.items():
-            if len(list_dfs) > 1:
-                df_product_combinado = concat(list_dfs, axis=0)
-            else:
-                df_product_combinado = list_dfs[0]
-
-            df_precios_merge = tf.pd_left_merge(
-                base_left=df_product_combinado,
-                base_right=df_prec_select_sin_dup,
-                key=EAN_UN,
+        for cada_tupla_triple in list_pdfs_cabecera:
+            
+            df_precios_merge = tf.merge_con_fallback(
+                df_left=cada_tupla_triple[2],
+                df_right=df_prec_select_sin_dup,
+                primera_clave=EAN_UN,
+                segunda_clave=EAN_PQ,
+                columna_objetivo=COD_MATERIAL
             )
-            df_precios_merge
+
 
             list_faltantes_df_precios = df_precios_merge[
                 df_precios_merge[COD_MATERIAL].isnull()
             ][EAN_UN].tolist()
-
+            
+            
             # Modifcar elementos flatantes
             if len(list_faltantes_df_precios) > 0:
                 list_faltantes_df_precios = [
-                    cada_tuple_key[0] + " " + cada_ean
+                    cada_tupla_triple[0] + " " + cada_ean
                     for cada_ean in list_faltantes_df_precios
                 ]
-            
+
             list_faltantes_df_precios_total.extend(list_faltantes_df_precios)
 
             df_plantilla_cols_finales = tf.seleccionar_columnas_pd(
@@ -126,9 +130,9 @@ class Run:
                 cols_elegidas=self.config_wrapper.config_claves_pdf.cols_finales,
             )
 
-            cod_dva = cada_tuple_key[0]
-            nomb = dict_oficina_nombre[cada_tuple_key[0]]
-            obs = cada_tuple_key[1]
+            cod_dva = cada_tupla_triple[0]
+            nomb = dict_oficina_nombre[cada_tupla_triple[0]]
+            obs = cada_tupla_triple[1]
 
             plantilla = plantilla_base.clonar_con_salida(
                 ruta_salida=f"Plantilla_Resultado\devolución_{cod_dva}_{nomb}_{obs}.xlsx"
@@ -151,9 +155,6 @@ class Run:
 
 
 if __name__ == "__main__":
-    # Obteenr lugar de ejecución.
-    import config_path_routes
-    config_path_routes.Obtener_lugar_de_ejecucion()
 
     # Configuración básica del logger
     gf.logger_basic_config()
@@ -161,3 +162,4 @@ if __name__ == "__main__":
     # Crear instancia de Run y ejecutar
     Iniciar_proceso = Run()
     Iniciar_proceso.main()
+
